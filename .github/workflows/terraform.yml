@@ -60,8 +60,9 @@ jobs:
         id: outputs
         working-directory: ./terraform
         run: |
-          instance=$(terraform output -raw ec2_instance_id)
-          echo "instance_id=$instance" >> $GITHUB_OUTPUT
+          # HABILITAR PARA DEPLOY EM EC2
+          # instance=$(terraform output -raw ec2_instance_id)
+          # echo "instance_id=$instance" >> $GITHUB_OUTPUT
           
           db_endpoint=$(terraform output -raw db_endpoint)
           echo "db_endpoint=$db_endpoint" >> $GITHUB_OUTPUT
