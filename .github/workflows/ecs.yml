@@ -47,14 +47,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: ${{ secrets.ECS_CONTAINER_NAME }}
-          image: ${{ secrets.DOCKER_USERNAME }}/ci-alura-go-ecs:${{ github.sha }}
-          environment-variables: |
-            DB_HOST=${{ inputs.db-endpoint }}
-            DB_PORT=${{ inputs.db-port }}
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_NAME=${{ secrets.DB_NAME }}
-            PORT=8000
+          image: ${{ secrets.DOCKER_USERNAME }}/ci-alura-go-ecs:${{ github.sha }}         
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
