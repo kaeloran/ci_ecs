@@ -1,0 +1,70 @@
+name: Terraform Pipeline
+
+on:
+  workflow_call:
+    outputs:
+      instance_id:
+        description: "ID da instância EC2 (SSM)"
+        value: ${{ jobs.terraform.outputs.instance_id }}
+      db_endpoint:
+        description: "Endpoint of the database"
+        value: ${{ jobs.terraform.outputs.db_endpoint }}
+      db_port:
+        description: "Port of the database"
+        value: ${{ jobs.terraform.outputs.db_port }}     
+
+permissions:
+  id-token: write 
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    outputs:
+      instance_id: ${{ steps.outputs.outputs.instance_id }}
+      db_endpoint: ${{ steps.outputs.outputs.db_endpoint }}
+      db_port: ${{ steps.outputs.outputs.db_port }}      
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1  
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform plan
+        env:
+          TF_VAR_cdirs_acesso_remoto: ${{ secrets.REMOTE_ACCESS_CIDR }}
+          TF_VAR_s3_deploy_bucket: ${{ secrets.S3_DEPLOY_BUCKET }}
+          TF_VAR_db_name: ${{ secrets.DB_NAME }}
+        run: terraform plan -out=tfplan
+        working-directory: ./terraform
+      
+      - name: Terraform apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./terraform
+
+      - name: Collect outputs
+        id: outputs
+        working-directory: ./terraform
+        run: |
+          instance=$(terraform output -raw ec2_instance_id)
+          echo "instance_id=$instance" >> $GITHUB_OUTPUT
+          
+          db_endpoint=$(terraform output -raw db_endpoint)
+          echo "db_endpoint=$db_endpoint" >> $GITHUB_OUTPUT
+          
+          db_port=$(terraform output -raw db_port)
+          echo "db_port=$db_port" >> $GITHUB_OUTPUT        

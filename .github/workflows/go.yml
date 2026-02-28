@@ -1,0 +1,49 @@
+name: Go Pipeline
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:    
+  terraform:
+    uses: ./.github/workflows/terraform.yml
+    secrets: inherit 
+
+  build:
+    needs: terraform
+    runs-on: ubuntu-latest    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Install Dependencies
+      run: go mod tidy
+      
+    - name: Build
+      run: go build -v -o main main.go
+
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: go-app
+        path: |
+          main
+          templates/
+  
+  deploy_ec2:
+    needs: [terraform, build]
+    uses: ./.github/workflows/ec2.yml
+    with:      
+      instance-id: ${{ needs.terraform.outputs.instance_id }}
+      db-endpoint: ${{ needs.terraform.outputs.db_endpoint }}      
+    secrets: inherit

@@ -1,0 +1,128 @@
+name: Entrega contínua EC2 via SSM
+
+on:
+  workflow_call:
+    inputs:
+      instance-id: 
+        description: "ID da instância EC2"
+        required: true
+        type: string
+      db-endpoint:
+        description: "Endpoint do RDS"
+        required: true
+        type: string      
+
+env:
+  AWS_REGION: "us-east-1"
+
+permissions:
+  id-token: write
+  contents: read  
+
+jobs:
+  Deploy_SSM:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: go-app
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1 
+
+      - name: Create .env file
+        env:
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          cat <<EOF > .env
+          DB_HOST=${{ inputs.db-endpoint }}
+          DB_USER="${DB_USER}"
+          DB_PASSWORD="${DB_PASSWORD}"
+          DB_NAME="${DB_NAME}"
+          DB_PORT=5432
+          PORT=8000
+          EOF
+
+      - name: Empacotar Aplicação
+        run: zip -r app.zip main templates/ .env
+
+      - name: Upload para o S3
+        run: aws s3 cp app.zip s3://${{ secrets.S3_DEPLOY_BUCKET }}/app.zip
+
+      - name: Aguardar SSM Agent ficar Online
+        run: |
+          echo "Aguardando a instância ${{ inputs.instance-id }} registrar-se no AWS SSM..."
+          
+          for i in {1..30}; do
+            STATUS=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=${{ inputs.instance-id }}" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text)
+              
+            if [ "$STATUS" == "Online" ]; then
+              echo "✅ Instância está Online e pronta para receber comandos!"
+              break
+            fi
+            
+            echo "Status atual: $STATUS. Tentativa $i/30. Aguardando 10 segundos..."
+            sleep 10
+          done
+          
+          if [ "$STATUS" != "Online" ]; then
+            echo "❌ Timeout: A instância não ficou online no SSM a tempo."
+            exit 1
+          fi
+
+      - name: Executar Deploy na EC2 via SSM
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ inputs.instance-id }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "#!/bin/bash",
+              "sudo yum install -y unzip psmisc",
+              "killall main || true",
+              "cd /home/ec2-user",
+              "rm -rf app app.zip",
+              "mkdir -p app",
+              "aws s3 cp s3://${{ secrets.S3_DEPLOY_BUCKET }}/app.zip .",
+              "unzip -o app.zip -d app/",
+              "cd app",
+              "chmod +x main",
+              "chown -R ec2-user:ec2-user /home/ec2-user/app",
+              "sudo -u ec2-user bash -c '\''cd /home/ec2-user/app && setsid ./main > app.log 2>&1 < /dev/null &'\''"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
+          echo "Comando SSM para deploy enviado com ID: $COMMAND_ID. A validação será feita via Health Check."
+
+      - name: Validar Deploy com Health Check
+        run: |
+          echo "Aguardando 15s para o servidor iniciar..."
+          sleep 15
+          PUBLIC_IP=$(aws ec2 describe-instances --instance-ids "${{ inputs.instance-id }}" --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+          if [ -z "$PUBLIC_IP" ]; then
+            echo "❌ Não foi possível obter o IP público da instância."
+            exit 1
+          fi
+          echo "IP Público da instância: $PUBLIC_IP"
+          echo "Iniciando health check em http://$PUBLIC_IP:8000/health"
+          for i in {1..20}; do
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://$PUBLIC_IP:8000/health")
+            echo "Health check (tentativa $i/20): Status Code $STATUS_CODE"
+            if [ "$STATUS_CODE" -eq 200 ]; then
+              echo "✅ Aplicação está online e respondendo."
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "❌ Timeout: A aplicação não respondeu ao health check a tempo."
+          exit 1
