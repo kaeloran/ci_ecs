@@ -1,19 +1,25 @@
-FROM ubuntu:latest
+# Build stage
+FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends golang-go ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
 COPY go.mod go.sum ./
 
-COPY templates ./templates
+RUN go mod download
 
-COPY ./ .
+COPY . .
 
-RUN go build -v main.go
+RUN go build -v -o main main.go
+
+# Runtime stage
+FROM alpine:latest
+
+WORKDIR /app
+
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /app/main .
+COPY --from=builder /app/templates ./templates
 
 EXPOSE 8000
 CMD ["./main"]
