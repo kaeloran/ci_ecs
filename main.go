@@ -12,7 +12,7 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Erro ao carregar arquivo .env")
+		log.Println("Aviso: arquivo .env não encontrado, usando variáveis de ambiente do sistema")
 	}
 
 	database.ConectaComBancoDeDados()
