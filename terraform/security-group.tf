@@ -1,5 +1,5 @@
 resource "aws_security_group" "asg_acesso_ssh" {
-  name   = "acesso-ssh"
+  name   = "acesso_ssh"
   description = "Permitir acesso SSH"  
   
   ingress {
