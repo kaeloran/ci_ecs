@@ -3,9 +3,10 @@ name: Terraform Pipeline
 on:
   workflow_call:
     outputs:
-      instance_id:
-        description: "ID da instância EC2 (SSM)"
-        value: ${{ jobs.terraform.outputs.instance_id }}
+        
+      # instance_id:
+      #   description: "ID da instância EC2 (SSM)"
+      #   value: ${{ jobs.terraform.outputs.instance_id }}
       db_endpoint:
         description: "Endpoint of the database"
         value: ${{ jobs.terraform.outputs.db_endpoint }}
@@ -21,7 +22,8 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     outputs:
-      instance_id: ${{ steps.outputs.outputs.instance_id }}
+      # HABILITAR PARA DEPLOY EM EC2
+      # instance_id: ${{ steps.outputs.outputs.instance_id }}
       db_endpoint: ${{ steps.outputs.outputs.db_endpoint }}
       db_port: ${{ steps.outputs.outputs.db_port }}      
 
