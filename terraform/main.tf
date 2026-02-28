@@ -10,24 +10,25 @@ provider "aws" {
   region = "us-east-1"
 }
 
-resource "aws_instance" "alura_go_api_dev" {
-    ami           = var.amis["us-east-1"]
-    instance_type = "t3.micro"
-    key_name      = var.key_name
+# HABILITAR PARA DEPLOY EM EC2
+# resource "aws_instance" "alura_go_api_dev" {
+#     ami           = var.amis["us-east-1"]
+#     instance_type = "t3.micro"
+#     key_name      = var.key_name
         
-    iam_instance_profile = "GitHubActionsEc2SSMRole"
+#     iam_instance_profile = "GitHubActionsEc2SSMRole"
     
-    vpc_security_group_ids = [
-      aws_security_group.asg_acesso_ssh.id,
-      aws_security_group.asg_alura_go_api_dev.id,
-    ]    
+#     vpc_security_group_ids = [
+#       aws_security_group.asg_acesso_ssh.id,
+#       aws_security_group.asg_alura_go_api_dev.id,
+#     ]    
 
-    tags = {
-        Name = "alura-go-api-dev"
-    }
+#     tags = {
+#         Name = "alura-go-api-dev"
+#     }
 
-    depends_on = [aws_db_instance.postgres_alura_go_dev]
-}
+#     depends_on = [aws_db_instance.postgres_alura_go_dev]
+# }
 
 data "aws_secretsmanager_secret" "db" {
   name = "alura_db_go_credentials"

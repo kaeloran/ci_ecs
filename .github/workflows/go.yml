@@ -45,10 +45,18 @@ jobs:
     uses: ./.github/workflows/ci_docker.yml
     secrets: inherit
   
-  deploy_ec2:
-    needs: [terraform, build]
-    uses: ./.github/workflows/ec2.yml
-    with:      
-      instance-id: ${{ needs.terraform.outputs.instance_id }}
-      db-endpoint: ${{ needs.terraform.outputs.db_endpoint }}      
+  # deploy_ec2:
+  #   needs: [terraform, build]
+  #   uses: ./.github/workflows/ec2.yml
+  #   with:      
+  #     instance-id: ${{ needs.terraform.outputs.instance_id }}
+  #     db-endpoint: ${{ needs.terraform.outputs.db_endpoint }}      
+  #   secrets: inherit
+
+  deploy_ecs:
+    needs: [terraform, docker]
+    uses: ./.github/workflows/ecs.yml    
+    with:
+      db-endpoint: ${{ needs.terraform.outputs.db_endpoint }}
+      db-port: ${{ needs.terraform.outputs.db_port }}
     secrets: inherit

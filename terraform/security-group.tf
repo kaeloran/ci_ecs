@@ -1,18 +1,19 @@
-resource "aws_security_group" "asg_acesso_ssh" {
-  name   = "acesso_ssh"
-  description = "Permitir acesso SSH"  
+# HABILITAR PARA DEPLOY EM EC2, CASO QUEIRA ACESSAR VIA SSH
+# resource "aws_security_group" "asg_acesso_ssh" {
+#   name   = "acesso_ssh"
+#   description = "Permitir acesso SSH"  
   
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.cdirs_acesso_remoto
-  }
+#   ingress {
+#     from_port   = 22
+#     to_port     = 22
+#     protocol    = "tcp"
+#     cidr_blocks = var.cdirs_acesso_remoto
+#   }
 
-  tags = {
-    Name = "SSH"
-  }
-}
+#   tags = {
+#     Name = "SSH"
+#   }
+# }
 
 resource "aws_security_group" "asg_alura_go_api_dev" {
   name        = "app"

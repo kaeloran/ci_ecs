@@ -1,0 +1,60 @@
+name: Entrega contínua ECS
+
+on:
+  workflow_call:    
+    inputs:      
+      db-endpoint:
+        description: "Endpoint do RDS"
+        required: true
+        type: string   
+      db-port:
+        description: "Porta do RDS"
+        required: false
+        type: string     
+
+env:
+  AWS_REGION: "us-east-1"
+
+permissions:
+  id-token: write 
+  contents: read  
+
+jobs:
+  Deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1       
+
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${{ secrets.ECS_TASK_DEFINITION }} --query taskDefinition > task-definition.json
+
+      - name: Render Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ secrets.ECS_CONTAINER_NAME }}
+          image: ${{ secrets.DOCKER_USERNAME }}/ci-alura-go-ecs:${{ github.sha }}
+          environment-variables: |
+            DB_HOST=${{ inputs.db-endpoint }}
+            DB_PORT=${{ inputs.db-port }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            PORT=8000
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
