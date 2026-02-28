@@ -1,4 +1,4 @@
-resource "aws_security_group" "asg-acesso-ssh" {
+resource "aws_security_group" "asg_acesso_ssh" {
   name   = "acesso-ssh"
   description = "Permitir acesso SSH"  
   
@@ -14,7 +14,7 @@ resource "aws_security_group" "asg-acesso-ssh" {
   }
 }
 
-resource "aws_security_group" "asg-alura-go-api-dev" {
+resource "aws_security_group" "asg_alura_go_api_dev" {
   name        = "app"
   description = "Security group for application instances, also used by RDS"
 
@@ -45,7 +45,7 @@ resource "aws_security_group" "rds" {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.asg-alura-go-api-dev.id]
+    security_groups = [aws_security_group.asg_alura_go_api_dev.id]
   }
 
   tags = {
