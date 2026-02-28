@@ -28,9 +28,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 1
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -43,41 +40,31 @@ jobs:
         with:
           terraform_version: 1.7.5
 
-      - name: Debug Terraform module files
-        run: |
-          echo "github.sha=${{ github.sha }}"
-          pwd
-          ls -la
-          ls -la terraform
-          echo "--- terraform/main.tf ---"
-          sed -n '1,220p' terraform/main.tf
-          echo "--- terraform/outputs.tf ---"
-          sed -n '1,120p' terraform/outputs.tf
-
       - name: Terraform init
-        run: terraform -chdir=terraform init -reconfigure
-
-      - name: Terraform validate
-        run: terraform -chdir=terraform validate
+        run: terraform init
+        working-directory: ./terraform
 
       - name: Terraform plan
         env:
           TF_VAR_cdirs_acesso_remoto: ${{ secrets.REMOTE_ACCESS_CIDR }}
           TF_VAR_s3_deploy_bucket: ${{ secrets.S3_DEPLOY_BUCKET }}
           TF_VAR_db_name: ${{ secrets.DB_NAME }}
-        run: terraform -chdir=terraform plan -out=tfplan
+        run: terraform plan -out=tfplan
+        working-directory: ./terraform
       
       - name: Terraform apply
-        run: terraform -chdir=terraform apply -auto-approve tfplan
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./terraform
 
       - name: Collect outputs
         id: outputs
+        working-directory: ./terraform
         run: |
-          instance=$(terraform -chdir=terraform output -raw ec2_instance_id)
+          instance=$(terraform output -raw ec2_instance_id)
           echo "instance_id=$instance" >> $GITHUB_OUTPUT
           
-          db_endpoint=$(terraform -chdir=terraform output -raw db_endpoint)
+          db_endpoint=$(terraform output -raw db_endpoint)
           echo "db_endpoint=$db_endpoint" >> $GITHUB_OUTPUT
           
-          db_port=$(terraform -chdir=terraform output -raw db_port)
+          db_port=$(terraform output -raw db_port)
           echo "db_port=$db_port" >> $GITHUB_OUTPUT        
