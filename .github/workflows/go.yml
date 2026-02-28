@@ -39,6 +39,11 @@ jobs:
         path: |
           main
           templates/
+
+  docker:
+    needs: build
+    uses: ./.github/workflows/ci_docker.yml
+    secrets: inherit
   
   deploy_ec2:
     needs: [terraform, build]
