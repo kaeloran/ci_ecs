@@ -5,11 +5,11 @@ WORKDIR /app
 
 COPY go.mod go.sum ./
 
-RUN go mod download
+RUN go mod download && go mod verify
 
 COPY . .
 
-RUN go build -v -o main main.go
+RUN go mod tidy && go build -v -o main main.go
 
 # Runtime stage
 FROM alpine:latest
